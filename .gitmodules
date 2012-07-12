@@ -1,0 +1,15 @@
+[submodule "PatchMatch"]
+	path = PatchMatch
+	url = https://github.com/daviddoria/PatchMatch.git
+[submodule "ITKVTKCamera"]
+	path = ITKVTKCamera
+	url = https://github.com/daviddoria/ITKVTKCamera.git
+[submodule "ITKVTKHelpers"]
+	path = ITKVTKHelpers
+	url = https://github.com/daviddoria/ITKVTKHelpers.git
+[submodule "Layer"]
+	path = Layer
+	url = https://github.com/daviddoria/Layer
+[submodule "VTKHelpers"]
+	path = VTKHelpers
+	url = https://github.com/daviddoria/VTKHelpers.git
