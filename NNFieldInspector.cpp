@@ -75,6 +75,8 @@ void NNFieldInspector::SharedConstructor()
 
   this->Interpretation = ABSOLUTE;
 
+  this->qvtkWidget->GetInteractor()->AddObserver(vtkCommand::KeyPressEvent, this, &NNFieldInspector::KeypressCallbackFunction);
+
   // Turn slices visibility off to prevent errors that there is not yet data.
   this->ImageLayer.ImageSlice->VisibilityOff();
   this->NNFieldMagnitudeLayer.ImageSlice->VisibilityOff();
@@ -346,4 +348,9 @@ void NNFieldInspector::on_actionInterpretAsOffsetField_activated()
 void NNFieldInspector::on_actionInterpretAsAbsoluteField_activated()
 {
   this->Interpretation = ABSOLUTE;
+}
+
+void NNFieldInspector::KeypressCallbackFunction(vtkObject* caller, long unsigned int eventId, void* callData)
+{
+  std::cout << "Keypress." << std::endl;
 }

@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 2.6)
 
 PROJECT(InteractivePatchMatch)
+SET(CMAKE_INCLUDE_CURRENT_DIR ON)
+
+# C++11 support
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=gnu++0x")
 
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
@@ -17,11 +20,25 @@ INCLUDE(${USE_VTK_FILE})
 QT4_WRAP_UI(UISrcs NNFieldInspector.ui)
 QT4_WRAP_CPP(MOCSrcs NNFieldInspector.h)
 
-add_subdirectory(PatchMatch)
-add_subdirectory(ITKVTKHelpers)
-add_subdirectory(ITKVTKCamera)
-add_subdirectory(Layer)
-add_subdirectory(VTKHelpers)
+if(NOT TARGET ITKVTKCamera)
+  add_subdirectory(ITKVTKCamera)
+  include_directories(${ITKVTKCamera_includes})
+endif()
+
+if(NOT TARGET PatchMatch)
+  add_subdirectory(PatchMatch)
+  include_directories(${PatchMatch_includes})
+endif()
+
+if(NOT TARGET Layer)
+  add_subdirectory(Layer)
+  include_directories(${Layer_includes})
+endif()
+
+if(NOT TARGET VTKHelpers)
+  add_subdirectory(VTKHelpers)
+  include_directories(${VTKHelpers_includes})
+endif()
 
 add_executable(NNFieldInspector NNFieldInspectorDriver.cpp
 NNFieldInspector.cpp

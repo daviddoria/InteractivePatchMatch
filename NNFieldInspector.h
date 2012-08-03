@@ -80,6 +80,9 @@ public slots:
 
 private:
 
+  /** React to a keypress.*/
+  void KeypressCallbackFunction(vtkObject* caller, long unsigned int eventId, void* callData);
+    
   /** React to a pick event.*/
   void PixelClickedEventHandler(vtkObject* caller, long unsigned int eventId,
                                 void* callData);
