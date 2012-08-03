@@ -1,6 +1,6 @@
 /*=========================================================================
  *
- *  Copyright David Doria 2011 daviddoria@gmail.com
+ *  Copyright David Doria 2012 daviddoria@gmail.com
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -58,7 +58,8 @@ void NNFieldInspector::on_actionHelp_activated()
 
   help->setReadOnly(true);
   help->append("<h1>Nearest Neighbor Field Inspector</h1>\
-  Click on a pixel. The surrounding region will be outlined, and the best matching region will be outlined.<br/>"
+  Click on a pixel. The surrounding region will be outlined,\
+  and the best matching region will be outlined.<br/>"
   );
   help->show();
 }
@@ -72,9 +73,13 @@ void NNFieldInspector::SharedConstructor()
 {
   this->setupUi(this);
 
+  this->Interpretation = ABSOLUTE;
+
   // Turn slices visibility off to prevent errors that there is not yet data.
   this->ImageLayer.ImageSlice->VisibilityOff();
-  this->NNFieldLayer.ImageSlice->VisibilityOff();
+  this->NNFieldMagnitudeLayer.ImageSlice->VisibilityOff();
+  this->NNFieldXLayer.ImageSlice->VisibilityOff();
+  this->NNFieldYLayer.ImageSlice->VisibilityOff();
   this->PickLayer.ImageSlice->VisibilityOff();
 
   this->Renderer = vtkSmartPointer<vtkRenderer>::New();
@@ -82,7 +87,9 @@ void NNFieldInspector::SharedConstructor()
 
   // Add slices to renderer
   this->Renderer->AddViewProp(this->ImageLayer.ImageSlice);
-  this->Renderer->AddViewProp(this->NNFieldLayer.ImageSlice);
+  this->Renderer->AddViewProp(this->NNFieldMagnitudeLayer.ImageSlice);
+  this->Renderer->AddViewProp(this->NNFieldXLayer.ImageSlice);
+  this->Renderer->AddViewProp(this->NNFieldYLayer.ImageSlice);
   this->Renderer->AddViewProp(this->PickLayer.ImageSlice);
 
   this->NNField = NNFieldImageType::New();
@@ -102,8 +109,6 @@ void NNFieldInspector::SharedConstructor()
   this->Camera.SetRenderer(this->Renderer);
   this->Camera.SetRenderWindow(this->qvtkWidget->GetRenderWindow());
   this->Camera.SetInteractorStyle(this->SelectionStyle);
-  //this->Camera.Flip();
-  this->Camera.SetCameraPosition1();
 }
 
 NNFieldInspector::NNFieldInspector(const std::string& imageFileName,
@@ -131,6 +136,7 @@ void NNFieldInspector::LoadNNField(const std::string& fileName)
   ITKHelpers::DeepCopy(nnFieldReader->GetOutput(), this->NNField.GetPointer());
 
   // Extract the first two channels
+  {
   std::vector<unsigned int> channels;
   channels.push_back(0);
   channels.push_back(1);
@@ -142,8 +148,14 @@ void NNFieldInspector::LoadNNField(const std::string& fileName)
   vectorImage->Allocate();
 
   ITKHelpers::ExtractChannels(this->NNField.GetPointer(), channels, vectorImage.GetPointer());
-  ITKVTKHelpers::ITKImageToVTKMagnitudeImage(vectorImage.GetPointer(), this->NNFieldLayer.ImageData);
+  ITKVTKHelpers::ITKImageToVTKMagnitudeImage(vectorImage.GetPointer(), this->NNFieldMagnitudeLayer.ImageData);
+  }
 
+  ITKVTKHelpers::ITKImageChannelToVTKImage(this->NNField.GetPointer(), 0, this->NNFieldXLayer.ImageData);
+
+  ITKVTKHelpers::ITKImageChannelToVTKImage(this->NNField.GetPointer(), 1, this->NNFieldYLayer.ImageData);
+
+  
   UpdateDisplayedImages();
 
   this->Renderer->ResetCamera();
@@ -193,6 +205,8 @@ void NNFieldInspector::on_actionOpenImage_activated()
     }
 
   LoadImage(fileName.toStdString());
+
+  this->Camera.SetCameraPositionPNG();
 }
 
 
@@ -223,6 +237,10 @@ void NNFieldInspector::PixelClickedEventHandler(vtkObject* caller, long unsigned
 
   std::cout << "Picked index: " << pickedIndex << std::endl;
 
+  std::stringstream ssSelected;
+  ssSelected << pickedIndex;
+  this->lblSelected->setText(ssSelected.str().c_str());
+  
   itk::ImageRegion<2> pickedRegion = ITKHelpers::GetRegionInRadiusAroundPixel(pickedIndex, this->PatchRadius);
 
   if(!this->Image->GetLargestPossibleRegion().IsInside(pickedRegion))
@@ -233,16 +251,30 @@ void NNFieldInspector::PixelClickedEventHandler(vtkObject* caller, long unsigned
 
   NNFieldImageType::PixelType nnFieldPixel = this->NNField->GetPixel(pickedIndex);
 
-  // This assumes the NNField is an Offset field
-  itk::Index<2> bestMatchCenter = {{static_cast<unsigned int>(nnFieldPixel[0]) + pickedIndex[0],
-                                    static_cast<unsigned int>(nnFieldPixel[1]) + pickedIndex[1]}};
-  // If we are using the Location field, do this:
-//   itk::Index<2> bestMatchCenter = {{static_cast<unsigned int>(nnFieldPixel[0]),
-//                                     static_cast<unsigned int>(nnFieldPixel[1])}};
+  itk::Index<2> bestMatchCenter;
+  if(this->Interpretation == OFFSET)
+  {
+    bestMatchCenter = {{static_cast<unsigned int>(nnFieldPixel[0]) + pickedIndex[0],
+                        static_cast<unsigned int>(nnFieldPixel[1]) + pickedIndex[1]}};
+  }
+  else if(this->Interpretation == ABSOLUTE)
+  {
+    bestMatchCenter = {{static_cast<unsigned int>(nnFieldPixel[0]),
+                        static_cast<unsigned int>(nnFieldPixel[1])}};
+  }
+  else
+  {
+    throw std::runtime_error("Invalid Interpretation value set!");
+  }
 
-  itk::ImageRegion<2> matchRegion = ITKHelpers::GetRegionInRadiusAroundPixel(bestMatchCenter, this->PatchRadius);
+  itk::ImageRegion<2> matchRegion =
+        ITKHelpers::GetRegionInRadiusAroundPixel(bestMatchCenter, this->PatchRadius);
   std::cout << "Best match center: " << bestMatchCenter << std::endl;
 
+  std::stringstream ssBestMatch;
+  ssBestMatch << bestMatchCenter;
+  this->lblNN->setText(ssBestMatch.str().c_str());
+  
   // Highlight patches
   ImageType::PixelType red;
   red[0] = 255; red[1] = 0; red[2] = 0;
@@ -261,11 +293,14 @@ void NNFieldInspector::PixelClickedEventHandler(vtkObject* caller, long unsigned
   FloatImageType::Pointer magnitudeImage = FloatImageType::New();
   ITKHelpers::MagnitudeImage(tempImage.GetPointer(), magnitudeImage.GetPointer());
 
-  ITKVTKHelpers::InitializeVTKImage(this->Image->GetLargestPossibleRegion(), 4, this->PickLayer.ImageData); // 4 for RGBA
+  // 4 for RGBA
+  ITKVTKHelpers::InitializeVTKImage(this->Image->GetLargestPossibleRegion(), 4, this->PickLayer.ImageData);
   VTKHelpers::MakeImageTransparent(this->PickLayer.ImageData);
   std::vector<itk::Index<2> > nonZeroPixels = ITKHelpers::GetNonZeroPixels(magnitudeImage.GetPointer());
   ITKVTKHelpers::SetPixelTransparency(this->PickLayer.ImageData, nonZeroPixels, VTKHelpers::OPAQUE_PIXEL);
-  ITKVTKHelpers::ITKImageToVTKRGBImage(tempImage.GetPointer(), this->PickLayer.ImageData, true); // 'true' means 'already initialized'
+
+  // 'true' means 'already initialized'
+  ITKVTKHelpers::ITKImageToVTKRGBImage(tempImage.GetPointer(), this->PickLayer.ImageData, true); 
   this->PickLayer.ImageSlice->VisibilityOn();
 }
 
@@ -279,14 +314,36 @@ void NNFieldInspector::on_radRGB_clicked()
   UpdateDisplayedImages();
 }
 
-void NNFieldInspector::on_radNNField_clicked()
+void NNFieldInspector::on_radNNFieldMagnitude_clicked()
+{
+  UpdateDisplayedImages();
+}
+
+void NNFieldInspector::on_radNNFieldX_clicked()
+{
+  UpdateDisplayedImages();
+}
+
+void NNFieldInspector::on_radNNFieldY_clicked()
 {
   UpdateDisplayedImages();
 }
 
 void NNFieldInspector::UpdateDisplayedImages()
 {
-  this->NNFieldLayer.ImageSlice->SetVisibility(this->radNNField->isChecked());
+  this->NNFieldMagnitudeLayer.ImageSlice->SetVisibility(this->radNNFieldMagnitude->isChecked());
+  this->NNFieldXLayer.ImageSlice->SetVisibility(this->radNNFieldX->isChecked());
+  this->NNFieldYLayer.ImageSlice->SetVisibility(this->radNNFieldY->isChecked());
   this->ImageLayer.ImageSlice->SetVisibility(this->radRGB->isChecked());
   this->qvtkWidget->GetRenderWindow()->Render();
+}
+
+void NNFieldInspector::on_actionInterpretAsOffsetField_activated()
+{
+  this->Interpretation = OFFSET;
+}
+
+void NNFieldInspector::on_actionInterpretAsAbsoluteField_activated()
+{
+  this->Interpretation = ABSOLUTE;
 }

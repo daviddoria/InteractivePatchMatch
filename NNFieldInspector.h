@@ -1,6 +1,6 @@
 /*=========================================================================
  *
- *  Copyright David Doria 2011 daviddoria@gmail.com
+ *  Copyright David Doria 2012 daviddoria@gmail.com
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -46,6 +46,8 @@ class NNFieldInspector : public QMainWindow, public Ui::NNFieldInspector
   Q_OBJECT
 public:
 
+  enum INTERPRETATION_ENUM {OFFSET, ABSOLUTE};
+  
   typedef itk::Image<itk::CovariantVector<unsigned char, 3>, 2> ImageType;
   typedef itk::VectorImage<float, 2> NNFieldImageType;
 
@@ -67,8 +69,14 @@ public slots:
   void on_actionFlipHorizontally_activated();
   void on_actionFlipVertically_activated();
 
+  // Edit menu
+  void on_actionInterpretAsOffsetField_activated();
+  void on_actionInterpretAsAbsoluteField_activated();
+
   void on_radRGB_clicked();
-  void on_radNNField_clicked();
+  void on_radNNFieldMagnitude_clicked();
+  void on_radNNFieldX_clicked();
+  void on_radNNFieldY_clicked();
 
 private:
 
@@ -94,9 +102,15 @@ private:
   /** The layer used to display the RGB image.*/
   Layer ImageLayer;
 
-  /** The layer used to display the nearest neighbor field.*/
-  Layer NNFieldLayer;
+  /** The layer used to display the magnitude of the nearest neighbor field.*/
+  Layer NNFieldMagnitudeLayer;
 
+  /** The layer used to display the X component of the nearest neighbor field.*/
+  Layer NNFieldXLayer;
+
+  /** The layer used to display the Y component of the nearest neighbor field.*/
+  Layer NNFieldYLayer;
+  
   /** The layer used to do the picking. This layer is always on top and is transparent everywhere
     * except the outline of the current patch and its best match.
     */
@@ -116,6 +130,8 @@ private:
 
   void UpdateDisplayedImages();
 
+  /** How to interpret the NNfield */
+  INTERPRETATION_ENUM Interpretation;
 };
 
 #endif
