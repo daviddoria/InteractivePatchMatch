@@ -4,9 +4,6 @@
 [submodule "ITKVTKCamera"]
 	path = ITKVTKCamera
 	url = https://github.com/daviddoria/ITKVTKCamera.git
-[submodule "ITKVTKHelpers"]
-	path = ITKVTKHelpers
-	url = https://github.com/daviddoria/ITKVTKHelpers.git
 [submodule "Layer"]
 	path = Layer
 	url = https://github.com/daviddoria/Layer

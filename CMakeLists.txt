@@ -23,21 +23,25 @@ QT4_WRAP_CPP(MOCSrcs NNFieldInspector.h)
 if(NOT TARGET ITKVTKCamera)
   add_subdirectory(ITKVTKCamera)
   include_directories(${ITKVTKCamera_includes})
+  set(NNFieldInspector_libraries ${NNFieldInspector_libraries} ${ITKVTKCamera_libraries})
 endif()
 
 if(NOT TARGET PatchMatch)
   add_subdirectory(PatchMatch)
   include_directories(${PatchMatch_includes})
+  set(NNFieldInspector_libraries ${NNFieldInspector_libraries} ${PatchMatch_libraries})
 endif()
 
 if(NOT TARGET Layer)
   add_subdirectory(Layer)
   include_directories(${Layer_includes})
+  set(NNFieldInspector_libraries ${NNFieldInspector_libraries} ${Layer_libraries})
 endif()
 
 if(NOT TARGET VTKHelpers)
   add_subdirectory(VTKHelpers)
   include_directories(${VTKHelpers_includes})
+  set(NNFieldInspector_libraries ${NNFieldInspector_libraries} ${VTKHelpers_libraries})
 endif()
 
 add_executable(NNFieldInspector NNFieldInspectorDriver.cpp
@@ -46,4 +50,4 @@ PointSelectionStyle2D.cpp
 ${UISrcs} ${MOCSrcs})
 
 TARGET_LINK_LIBRARIES(NNFieldInspector ${VTK_LIBRARIES} ${ITK_LIBRARIES}
-VTKHelpers ITKVTKCamera ITKVTKHelpers ITKHelpers Layer)
+${NNFieldInspector_libraries})

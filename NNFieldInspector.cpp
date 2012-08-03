@@ -73,9 +73,13 @@ void NNFieldInspector::SharedConstructor()
 {
   this->setupUi(this);
 
+  this->Image = NULL;
+  this->NNField = NULL;
+  
+  this->LastPick[0] = -1;
+  this->LastPick[1] = -1;
+  
   this->Interpretation = ABSOLUTE;
-
-  this->qvtkWidget->GetInteractor()->AddObserver(vtkCommand::KeyPressEvent, this, &NNFieldInspector::KeypressCallbackFunction);
 
   // Turn slices visibility off to prevent errors that there is not yet data.
   this->ImageLayer.ImageSlice->VisibilityOff();
@@ -111,15 +115,17 @@ void NNFieldInspector::SharedConstructor()
   this->Camera.SetRenderer(this->Renderer);
   this->Camera.SetRenderWindow(this->qvtkWidget->GetRenderWindow());
   this->Camera.SetInteractorStyle(this->SelectionStyle);
+
+  this->qvtkWidget->GetInteractor()->AddObserver(vtkCommand::KeyPressEvent, this, &NNFieldInspector::KeypressCallbackFunction);
+
 }
 
 NNFieldInspector::NNFieldInspector(const std::string& imageFileName,
                                    const std::string& nnFieldFileName) : PatchRadius(7)
 {
   SharedConstructor();
-
-  LoadImage(imageFileName);
-  LoadNNField(nnFieldFileName);
+  this->ImageFileName = imageFileName;
+  this->NNFieldFileName = nnFieldFileName;
 }
 
 // Constructor
@@ -157,11 +163,15 @@ void NNFieldInspector::LoadNNField(const std::string& fileName)
 
   ITKVTKHelpers::ITKImageChannelToVTKImage(this->NNField.GetPointer(), 1, this->NNFieldYLayer.ImageData);
 
-  
   UpdateDisplayedImages();
 
   this->Renderer->ResetCamera();
 
+  Refresh();
+}
+
+void NNFieldInspector::Refresh()
+{
   this->qvtkWidget->GetRenderWindow()->Render();
 }
 
@@ -197,7 +207,7 @@ void NNFieldInspector::on_actionOpenImage_activated()
 {
   // Get a filename to open
   QString fileName = QFileDialog::getOpenFileName(this, "Open File", ".",
-                                                  "Image Files (*.jpg *.jpeg *.bmp *.png *.mha)");
+                                                  "Image Files (*.jpg *.jpeg *.bmp *.png)");
 
   std::cout << "Got filename: " << fileName.toStdString() << std::endl;
   if(fileName.toStdString().empty())
@@ -208,7 +218,7 @@ void NNFieldInspector::on_actionOpenImage_activated()
 
   LoadImage(fileName.toStdString());
 
-  this->Camera.SetCameraPositionPNG();
+  //this->Camera.SetCameraPositionPNG();
 }
 
 
@@ -231,11 +241,27 @@ void NNFieldInspector::on_actionOpenNNField_activated()
 void NNFieldInspector::PixelClickedEventHandler(vtkObject* caller, long unsigned int eventId,
                                                 void* callData)
 {
+  if(!this->Image)
+  {
+    std::cerr << "Image must be set before clicking!" << std::endl;
+    return;
+  }
+
+  if(!this->NNField)
+  {
+    std::cerr << "NNField must be set before clicking!" << std::endl;
+    return;
+  }
+
   double* pixel = reinterpret_cast<double*>(callData);
 
   //std::cout << "Picked " << pixel[0] << " " << pixel[1] << std::endl;
 
   itk::Index<2> pickedIndex = {{static_cast<unsigned int>(pixel[0]), static_cast<unsigned int>(pixel[1])}};
+
+  // Store the pick
+  this->LastPick[0] = pickedIndex[0];
+  this->LastPick[1] = pickedIndex[1];
 
   std::cout << "Picked index: " << pickedIndex << std::endl;
 
@@ -304,6 +330,8 @@ void NNFieldInspector::PixelClickedEventHandler(vtkObject* caller, long unsigned
   // 'true' means 'already initialized'
   ITKVTKHelpers::ITKImageToVTKRGBImage(tempImage.GetPointer(), this->PickLayer.ImageData, true); 
   this->PickLayer.ImageSlice->VisibilityOn();
+
+  Refresh();
 }
 
 void NNFieldInspector::SetPatchRadius(const unsigned int patchRadius)
@@ -352,5 +380,58 @@ void NNFieldInspector::on_actionInterpretAsAbsoluteField_activated()
 
 void NNFieldInspector::KeypressCallbackFunction(vtkObject* caller, long unsigned int eventId, void* callData)
 {
-  std::cout << "Keypress." << std::endl;
+  std::cout << "KeypressCallbackFunction" << std::endl;
+
+  if(this->LastPick[0] == -1)
+  {
+    std::cerr << "Arrow keys don't work until a click has been made." << std::endl;
+    return;
+  }
+
+  vtkRenderWindowInteractor *iren =
+    static_cast<vtkRenderWindowInteractor*>(caller);
+
+  std::string pressedKey = iren->GetKeySym();
+
+  double fakeClick[2];
+  fakeClick[0] = this->LastPick[0];
+  fakeClick[1] = this->LastPick[1];
+
+  if(pressedKey == "Up")
+  {
+    fakeClick[1] += 1;
+  }
+  else if(pressedKey == "Down")
+  {
+    fakeClick[1] -= 1;
+  }
+  else if(pressedKey == "Left")
+  {
+    fakeClick[0] -= 1;
+  }
+  else if(pressedKey == "Right")
+  {
+    fakeClick[0] += 1;
+  }
+  else
+  {
+    return;
+  }
+
+  PixelClickedEventHandler(NULL, 0, fakeClick);
+}
+
+void NNFieldInspector::showEvent(QShowEvent* event)
+{
+  if(!this->ImageFileName.empty())
+  {
+    LoadImage(this->ImageFileName);
+  }
+
+  if(!this->NNFieldFileName.empty())
+  {
+    LoadNNField(this->NNFieldFileName);
+  }
+
+  this->Camera.SetCameraPositionPNG();
 }

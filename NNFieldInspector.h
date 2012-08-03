@@ -131,10 +131,22 @@ private:
   /** The renderer.*/
   vtkSmartPointer<vtkRenderer> Renderer;
 
+  /** Update the display.*/
   void UpdateDisplayedImages();
 
   /** How to interpret the NNfield */
   INTERPRETATION_ENUM Interpretation;
+
+  /** The last pick.*/
+  int LastPick[2];
+
+  void Refresh();
+
+  /** When the widget finishes loading, this function is called. */
+  void showEvent(QShowEvent* event);
+
+  std::string NNFieldFileName;
+  std::string ImageFileName;
 };
 
 #endif
