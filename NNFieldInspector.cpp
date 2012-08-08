@@ -66,7 +66,7 @@ void NNFieldInspector::on_actionHelp_activated()
 
 void NNFieldInspector::on_actionQuit_activated()
 {
-  exit(0);
+  QApplication::exit();
 }
 
 void NNFieldInspector::SharedConstructor()
@@ -75,10 +75,10 @@ void NNFieldInspector::SharedConstructor()
 
   this->Image = NULL;
   this->NNField = NULL;
-  
+
   this->LastPick[0] = -1;
   this->LastPick[1] = -1;
-  
+
   this->Interpretation = ABSOLUTE;
 
   // Turn slices visibility off to prevent errors that there is not yet data.
@@ -117,7 +117,6 @@ void NNFieldInspector::SharedConstructor()
   this->Camera.SetInteractorStyle(this->SelectionStyle);
 
   this->qvtkWidget->GetInteractor()->AddObserver(vtkCommand::KeyPressEvent, this, &NNFieldInspector::KeypressCallbackFunction);
-
 }
 
 NNFieldInspector::NNFieldInspector(const std::string& imageFileName,
@@ -218,7 +217,7 @@ void NNFieldInspector::on_actionOpenImage_activated()
 
   LoadImage(fileName.toStdString());
 
-  //this->Camera.SetCameraPositionPNG();
+  this->Camera.SetCameraPositionPNG();
 }
 
 
@@ -268,7 +267,7 @@ void NNFieldInspector::PixelClickedEventHandler(vtkObject* caller, long unsigned
   std::stringstream ssSelected;
   ssSelected << pickedIndex;
   this->lblSelected->setText(ssSelected.str().c_str());
-  
+
   itk::ImageRegion<2> pickedRegion = ITKHelpers::GetRegionInRadiusAroundPixel(pickedIndex, this->PatchRadius);
 
   if(!this->Image->GetLargestPossibleRegion().IsInside(pickedRegion))
@@ -302,7 +301,7 @@ void NNFieldInspector::PixelClickedEventHandler(vtkObject* caller, long unsigned
   std::stringstream ssBestMatch;
   ssBestMatch << bestMatchCenter;
   this->lblNN->setText(ssBestMatch.str().c_str());
-  
+
   // Highlight patches
   ImageType::PixelType red;
   red[0] = 255; red[1] = 0; red[2] = 0;
@@ -313,10 +312,12 @@ void NNFieldInspector::PixelClickedEventHandler(vtkObject* caller, long unsigned
   ImageType::Pointer tempImage = ImageType::New();
   tempImage->SetRegions(this->Image->GetLargestPossibleRegion());
   tempImage->Allocate();
+  tempImage->FillBuffer(itk::NumericTraits<ImageType::PixelType>::ZeroValue());
 
   ITKHelpers::OutlineRegion(tempImage.GetPointer(), pickedRegion, red);
 
   ITKHelpers::OutlineRegion(tempImage.GetPointer(), matchRegion, green);
+
   typedef itk::Image<float, 2> FloatImageType;
   FloatImageType::Pointer magnitudeImage = FloatImageType::New();
   ITKHelpers::MagnitudeImage(tempImage.GetPointer(), magnitudeImage.GetPointer());
@@ -328,7 +329,7 @@ void NNFieldInspector::PixelClickedEventHandler(vtkObject* caller, long unsigned
   ITKVTKHelpers::SetPixelTransparency(this->PickLayer.ImageData, nonZeroPixels, VTKHelpers::OPAQUE_PIXEL);
 
   // 'true' means 'already initialized'
-  ITKVTKHelpers::ITKImageToVTKRGBImage(tempImage.GetPointer(), this->PickLayer.ImageData, true); 
+  ITKVTKHelpers::ITKImageToVTKRGBImage(tempImage.GetPointer(), this->PickLayer.ImageData, true);
   this->PickLayer.ImageSlice->VisibilityOn();
 
   Refresh();
@@ -384,12 +385,16 @@ void NNFieldInspector::KeypressCallbackFunction(vtkObject* caller, long unsigned
 
   if(this->LastPick[0] == -1)
   {
-    std::cerr << "Arrow keys don't work until a click has been made." << std::endl;
+    std::cerr << "You cannot use the arrow keys until a click has been made." << std::endl;
     return;
   }
 
-  vtkRenderWindowInteractor *iren =
-    static_cast<vtkRenderWindowInteractor*>(caller);
+  vtkRenderWindowInteractor *iren = vtkRenderWindowInteractor::SafeDownCast(caller);
+
+  if(!iren)
+  {
+    throw std::runtime_error("The iren cast failed!");
+  }
 
   std::string pressedKey = iren->GetKeySym();
 
@@ -423,15 +428,20 @@ void NNFieldInspector::KeypressCallbackFunction(vtkObject* caller, long unsigned
 
 void NNFieldInspector::showEvent(QShowEvent* event)
 {
-  if(!this->ImageFileName.empty())
+  if(this->ImageFileName.empty() || this->NNFieldFileName.empty())
+  {
+    return;
+  }
+  else
   {
     LoadImage(this->ImageFileName);
-  }
-
-  if(!this->NNFieldFileName.empty())
-  {
     LoadNNField(this->NNFieldFileName);
+    this->Camera.SetCameraPositionPNG();
   }
+}
 
-  this->Camera.SetCameraPositionPNG();
+void NNFieldInspector::closeEvent(QCloseEvent* event)
+{
+  std::cout << "Exiting..." << std::endl;
+  QApplication::exit();
 }

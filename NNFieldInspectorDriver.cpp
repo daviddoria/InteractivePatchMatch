@@ -33,7 +33,8 @@ int main( int argc, char** argv )
 
   if(argc == 1)
   {
-    std::cout << "Using no arguments." << std::endl;
+    std::cout << "Using no arguments. Potential arguments are:" << std::endl
+              << "Image.png NNField.mha" << std::endl;
     nnFieldInspector = new NNFieldInspector;
   }
   else if(argc == 3)

@@ -46,8 +46,11 @@ class NNFieldInspector : public QMainWindow, public Ui::NNFieldInspector
   Q_OBJECT
 public:
 
+  /** If the NNField is interpreted as an absolute position field, the NNPatch is specified
+    * directly by the value at the field pixel. If it is interpreted as an offset field, the
+    * NNPatch is specified by the field pixel location + the field pixel value. */
   enum INTERPRETATION_ENUM {OFFSET, ABSOLUTE};
-  
+
   typedef itk::Image<itk::CovariantVector<unsigned char, 3>, 2> ImageType;
   typedef itk::VectorImage<float, 2> NNFieldImageType;
 
@@ -82,7 +85,7 @@ private:
 
   /** React to a keypress.*/
   void KeypressCallbackFunction(vtkObject* caller, long unsigned int eventId, void* callData);
-    
+
   /** React to a pick event.*/
   void PixelClickedEventHandler(vtkObject* caller, long unsigned int eventId,
                                 void* callData);
@@ -113,7 +116,7 @@ private:
 
   /** The layer used to display the Y component of the nearest neighbor field.*/
   Layer NNFieldYLayer;
-  
+
   /** The layer used to do the picking. This layer is always on top and is transparent everywhere
     * except the outline of the current patch and its best match.
     */
@@ -140,11 +143,16 @@ private:
   /** The last pick.*/
   int LastPick[2];
 
+  /** Refresh the window.*/
   void Refresh();
 
   /** When the widget finishes loading, this function is called. */
   void showEvent(QShowEvent* event);
 
+  /** When the widget is closed. */
+  void closeEvent(QCloseEvent* event);
+
+  /** Store the file names so they can be loaded in the showEvent instead of in the constructor directly. */
   std::string NNFieldFileName;
   std::string ImageFileName;
 };
