@@ -11,10 +11,12 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 FIND_PACKAGE(Qt4 REQUIRED)
 INCLUDE(${QT_USE_FILE})
 
-FIND_PACKAGE(ITK REQUIRED)
+FIND_PACKAGE(ITK REQUIRED ITKCommon ITKIOImageBase ITKIOPNG ITKIOMeta ITKDistanceMap
+                          ITKImageIntensity ITKImageFeature ITKMathematicalMorphology ITKBinaryMathematicalMorphology)
 INCLUDE(${USE_ITK_FILE})
 
-FIND_PACKAGE(VTK REQUIRED)
+FIND_PACKAGE(VTK REQUIRED vtkCommonCore vtkCommonDataModel vtkImagingMath vtkImagingCore vtkFiltersCore vtkIOXML
+                          vtkRenderingCore vtkInteractionStyle vtkGUISupportQt vtkInteractionWidgets)
 INCLUDE(${USE_VTK_FILE})
 
 QT4_WRAP_UI(UISrcs NNFieldInspector.ui)
