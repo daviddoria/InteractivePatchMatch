@@ -315,8 +315,10 @@ void NNFieldInspector::PixelClickedEventHandler(vtkObject* caller, long unsigned
   tempImage->FillBuffer(itk::NumericTraits<ImageType::PixelType>::ZeroValue());
 
   ITKHelpers::OutlineRegion(tempImage.GetPointer(), pickedRegion, red);
+  tempImage->SetPixel(ITKHelpers::GetRegionCenter(pickedRegion), red);
 
   ITKHelpers::OutlineRegion(tempImage.GetPointer(), matchRegion, green);
+  tempImage->SetPixel(ITKHelpers::GetRegionCenter(matchRegion), green);
 
   typedef itk::Image<float, 2> FloatImageType;
   FloatImageType::Pointer magnitudeImage = FloatImageType::New();
