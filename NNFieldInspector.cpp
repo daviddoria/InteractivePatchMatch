@@ -31,6 +31,10 @@
 // Qt
 #include <QFileDialog>
 #include <QTextEdit> // for help
+#include <QDropEvent>
+#include <QMouseEvent>
+#include <QDrag>
+#include <QMimeData>
 
 // VTK
 #include <vtkCommand.h>
@@ -72,6 +76,7 @@ void NNFieldInspector::on_actionQuit_activated()
 void NNFieldInspector::SharedConstructor()
 {
   this->setupUi(this);
+  this->setAcceptDrops(true);
 
   this->Image = NULL;
   this->NNField = NULL;
@@ -278,15 +283,14 @@ void NNFieldInspector::PixelClickedEventHandler(vtkObject* caller, long unsigned
 
   NNFieldImageType::PixelType nnFieldPixel = this->NNField->GetPixel(pickedIndex);
 
-  itk::Index<2> bestMatchCenter;
   if(this->Interpretation == OFFSET)
   {
-    bestMatchCenter = {{static_cast<unsigned int>(nnFieldPixel[0]) + pickedIndex[0],
+    this->BestMatchCenter = {{static_cast<unsigned int>(nnFieldPixel[0]) + pickedIndex[0],
                         static_cast<unsigned int>(nnFieldPixel[1]) + pickedIndex[1]}};
   }
   else if(this->Interpretation == ABSOLUTE)
   {
-    bestMatchCenter = {{static_cast<unsigned int>(nnFieldPixel[0]),
+    this->BestMatchCenter = {{static_cast<unsigned int>(nnFieldPixel[0]),
                         static_cast<unsigned int>(nnFieldPixel[1])}};
   }
   else
@@ -295,11 +299,11 @@ void NNFieldInspector::PixelClickedEventHandler(vtkObject* caller, long unsigned
   }
 
   itk::ImageRegion<2> matchRegion =
-        ITKHelpers::GetRegionInRadiusAroundPixel(bestMatchCenter, this->PatchRadius);
-  std::cout << "Best match center: " << bestMatchCenter << std::endl;
+        ITKHelpers::GetRegionInRadiusAroundPixel(this->BestMatchCenter, this->PatchRadius);
+  std::cout << "Best match center: " << this->BestMatchCenter << std::endl;
 
   std::stringstream ssBestMatch;
-  ssBestMatch << bestMatchCenter;
+  ssBestMatch << this->BestMatchCenter;
   this->lblNN->setText(ssBestMatch.str().c_str());
 
   // Highlight patches
@@ -446,4 +450,52 @@ void NNFieldInspector::closeEvent(QCloseEvent* event)
 {
   std::cout << "Exiting..." << std::endl;
   QApplication::exit();
+}
+
+void NNFieldInspector::dropEvent ( QDropEvent * event )
+{
+  std::cout << "dropEvent." << std::endl;
+
+  //QString filename = event->mimeData()->data("FileName");
+  QString data = event->mimeData()->text();
+  std::stringstream ss;
+  ss << data.toStdString();
+
+  ss >> this->LastPick[0] >> this->LastPick[1];
+
+  std::cout << "Dropped " << data.toStdString() << std::endl;
+  std::cout << "Last pick set from drop: " << this->LastPick << std::endl;
+  std::cout << "BestMatchCenter set from drop: " << this->LastPick << std::endl;
+
+  double fakeClick[2];
+  fakeClick[0] = this->LastPick[0];
+  fakeClick[1] = this->LastPick[1];
+
+  PixelClickedEventHandler(NULL, 0, fakeClick);
+}
+
+void NNFieldInspector::mousePressEvent(QMouseEvent *event)
+{
+  if (event->button() == Qt::LeftButton)
+  {
+    QDrag *drag = new QDrag(this);
+    QMimeData *mimeData = new QMimeData;
+
+    std::stringstream ss;
+    ss << this->LastPick[0] << " " << this->LastPick[1] << " "
+       << this->BestMatchCenter[0] << " " << this->BestMatchCenter[1];
+    mimeData->setText(ss.str().c_str());
+    std::cout << "Dragging " << ss.str() << std::endl;
+    drag->setMimeData(mimeData);
+
+    //Qt::DropAction dropAction = drag->exec();
+    drag->exec();
+  }
+}
+
+void NNFieldInspector::dragEnterEvent ( QDragEnterEvent * event )
+{
+  //std::cout << "dragEnterEvent." << std::endl;
+
+  event->accept();
 }

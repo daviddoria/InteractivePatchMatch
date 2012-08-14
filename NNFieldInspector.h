@@ -155,6 +155,16 @@ private:
   /** Store the file names so they can be loaded in the showEvent instead of in the constructor directly. */
   std::string NNFieldFileName;
   std::string ImageFileName;
+
+  /** Get data that has been dropped. */
+  void dropEvent ( QDropEvent * event );
+
+  /** Start the drag event. */
+  void mousePressEvent(QMouseEvent *event);
+
+  void dragEnterEvent ( QDragEnterEvent * event );
+
+  itk::Index<2> BestMatchCenter;
 };
 
 #endif
